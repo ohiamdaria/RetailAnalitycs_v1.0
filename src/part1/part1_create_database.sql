@@ -84,3 +84,5 @@ CREATE TABLE date_of_analysis_formation
 (
     analysis_formation timestamp
 );
+
+COMMIT;
