@@ -1,16 +1,16 @@
-CREATE DATABASE RetailAnalyticsV1;
+-- CREATE DATABASE RetailAnalyticsV1;
 
 CREATE TABLE personal_data
 (
     customer_id            BIGINT PRIMARY KEY,
     customer_name          varchar
-        CHECK (customer_name = '^[A-ZА-Я][a-zа-яё -]+$'),
+        CHECK (customer_name ~ '^[A-ZА-Я][a-zа-яё -]+$'),
     customer_surname       varchar
-        CHECK (customer_surname = '^[A-ZА-Я][a-zа-яё -]+$'),
+        CHECK (customer_surname ~ '^[A-ZА-Я][a-zа-яё -]+$'),
     customer_primary_email varchar
-        CHECK (customer_primary_email = '^[A-Za-z0-9._+%-]+@[A-Za-z0-9.-]+[.][A-Za-z]+$'),
+        CHECK (customer_primary_email ~ '^[A-Za-z0-9._+%-]+@[A-Za-z0-9.-]+[.][A-Za-z]+$'),
     customer_primary_phone varchar
-        CHECK (customer_primary_phone = '^[+][7][0-9]{10}')
+        CHECK (customer_primary_phone ~ '^[+][7][0-9]{10}')
 );
 
 
@@ -39,14 +39,14 @@ CREATE TABLE groups_sku
 (
     group_id   BIGINT PRIMARY KEY,
     group_name varchar
-        CHECK (group_name = '^[A-ZА-Яa-zа-яё0-9 -\[\]\\\^\$\.\|\?\*\+\(\)]+$')
+        CHECK (group_name ~ '^[A-ZА-Яa-zа-яё0-9 -\[\]\\\^\$\.\|\?\*\+\(\)]+$')
 );
 
 CREATE TABLE commodity_matrix
 (
     sku_id   BIGINT PRIMARY KEY,
     sku_name varchar
-        CHECK (sku_name = '^[A-ZА-Яa-zа-яё0-9 -\[\]\\\^\$\.\|\?\*\+\(\)]+$'),
+        CHECK (sku_name ~ '^[A-ZА-Яa-zа-яё0-9 -\[\]\\\^\$\.\|\?\*\+\(\)]+$'),
     group_id BIGINT NOT NULL REFERENCES groups_sku (group_id)
 );
 
