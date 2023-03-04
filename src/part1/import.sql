@@ -1,11 +1,9 @@
-SET path_to_project.const TO '/home/vladimir/Рабочий стол/RetailAnalitycs_v1.0/';
+SET path_to_project.const TO '/home/vladimir/Desktop/RetailAnalitycs_v1.0/';
 
-CREATE PROCEDURE import_data(tablename varchar, delimeter char)
-AS
-$$
-BEGIN
-    EXECUTE format('COPY %s FROM %L WITH CSV DELIMITER %L HEADER;', $1, $2, $3);
-END;
+CREATE OR REPLACE PROCEDURE import(IN tablename varchar, IN path text, IN separator char) AS $$
+    BEGIN
+            EXECUTE format('COPY %s FROM ''%s'' DELIMITER ''%s'' CSV HEADER;', tablename, path, separator);
+    END;
 $$ LANGUAGE plpgsql;
 
-CALL import_data('cards',current_setting('path_to_project.const')||'datasets/Cards'||'.tsv',',');
+CALL import('transactions', '/home/vladimir/Desktop/RetailAnalitycs_v1.0/datasets/Transactions.tsv','.');

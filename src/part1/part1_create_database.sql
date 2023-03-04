@@ -1,4 +1,4 @@
--- CREATE DATABASE RetailAnalyticsV1;
+CREATE DATABASE RetailAnalyticsV1;
 
 CREATE TABLE personal_data
 (
@@ -20,6 +20,8 @@ CREATE TABLE cards
     customer_id      BIGINT NOT NULL REFERENCES personal_data (customer_id)
 );
 
+CREATE INDEX IF NOT EXISTS idx_customer_id ON cards USING btree(customer_id);
+
 COMMENT ON COLUMN cards.customer_id IS 'Одному клиенту может принадлежать несколько карт';
 
 CREATE TABLE transactions
@@ -30,6 +32,8 @@ CREATE TABLE transactions
     transaction_datetime timestamp,
     transaction_store_id BIGINT
 );
+
+CREATE INDEX IF NOT EXISTS idx_transactions_time_card ON transactions USING btree(transaction_datetime, customer_card_id);
 
 COMMENT ON COLUMN transactions.transaction_summ IS 'Сумма транзакции в рублях (полная стоимость покупки без учета скидок)';
 COMMENT ON COLUMN transactions.transaction_datetime IS 'Дата и время совершения транзакции';
@@ -49,6 +53,8 @@ CREATE TABLE commodity_matrix
         CHECK (sku_name ~ '^[A-ZА-Яa-zа-яё0-9 -\[\]\\\^\$\.\|\?\*\+\(\)]+$'),
     group_id BIGINT NOT NULL REFERENCES groups_sku (group_id)
 );
+
+CREATE INDEX IF NOT EXISTS idx_group_id ON commodity_matrix USING btree(group_id);
 
 COMMENT ON COLUMN commodity_matrix.group_id IS 'Идентификатор группы родственных товаров, к которой относится товар (например, одинаковые йогурты одного производителя и объема, но разных вкусов). Указывается один идентификатор для всех товаров в группе';
 
@@ -82,7 +88,7 @@ COMMENT ON COLUMN stores.sku_retail_price IS 'Стоимость продажи 
 
 CREATE TABLE date_of_analysis_formation
 (
-    analysis_formation timestamp
+    analysis_formation timestamp DEFAULT current_date
 );
 
 COMMIT;
