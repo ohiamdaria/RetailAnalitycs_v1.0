@@ -1,15 +1,13 @@
-CREATE DATABASE RetailAnalyticsV1;
-
 CREATE TABLE personal_data
 (
     customer_id            BIGINT PRIMARY KEY,
-    customer_name          varchar
+    customer_name          varchar(255)
         CHECK (customer_name ~ '^[A-ZА-Я][a-zа-яё -]+$'),
-    customer_surname       varchar
+    customer_surname       varchar(255)
         CHECK (customer_surname ~ '^[A-ZА-Я][a-zа-яё -]+$'),
-    customer_primary_email varchar
+    customer_primary_email varchar(255)
         CHECK (customer_primary_email ~ '^[A-Za-z0-9._+%-]+@[A-Za-z0-9.-]+[.][A-Za-z]+$'),
-    customer_primary_phone varchar
+    customer_primary_phone varchar(255)
         CHECK (customer_primary_phone ~ '^[+][7][0-9]{10}')
 );
 
@@ -42,7 +40,7 @@ COMMENT ON COLUMN transactions.transaction_store_id IS 'Магазин, в ко�
 CREATE TABLE groups_sku
 (
     group_id   BIGINT PRIMARY KEY,
-    group_name varchar
+    group_name varchar(255)
         CHECK (group_name ~ '^[A-ZА-Яa-zа-яё0-9 -\[\]\\\^\$\.\|\?\*\+\(\)]+$')
 );
 
@@ -90,5 +88,3 @@ CREATE TABLE date_of_analysis_formation
 (
     analysis_formation timestamp DEFAULT current_date
 );
-
-COMMIT;
