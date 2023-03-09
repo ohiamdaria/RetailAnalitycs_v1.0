@@ -6,6 +6,8 @@
 SET path_to_datasets.const TO '/Users/warbirdo/Desktop/RetailAnalitycs_v1.0/datasets/';
 
 DROP PROCEDURE IF EXISTS import(tablename varchar, separator char);
+DROP PROCEDURE IF EXISTS import_mini(tablename varchar, separator char);
+
 
 CREATE OR REPLACE PROCEDURE import(IN tablename varchar, IN separator char) AS $$
     BEGIN
@@ -31,14 +33,14 @@ CALL import('Stores', E'\t');
 CALL import('date_of_analysis_formation', E'\t');
 
 
-CALL import_mini('personal_data',E'\t');
-CALL import_mini('Cards', E'\t');
-CALL import_mini('Transactions', E'\t');
-CALL import_mini('Groups_SKU', E'\t');
-CALL import_mini('SKU', E'\t');
-CALL import_mini('Checks', E'\t');
-CALL import_mini('Stores', E'\t');
-CALL import_mini('date_of_analysis_formation', E'\t');
+-- CALL import_mini('personal_data',E'\t');
+-- CALL import_mini('Cards', E'\t');
+-- CALL import_mini('Transactions', E'\t');
+-- CALL import_mini('Groups_SKU', E'\t');
+-- CALL import_mini('SKU', E'\t');
+-- CALL import_mini('Checks', E'\t');
+-- CALL import_mini('Stores', E'\t');
+-- CALL import_mini('date_of_analysis_formation', E'\t');
 
 -- DELETE FROM personal_data WHERE customer_id between 1 and 1000;
 
