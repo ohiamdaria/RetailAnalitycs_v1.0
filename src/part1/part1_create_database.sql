@@ -44,7 +44,7 @@ CREATE TABLE groups_sku
         CHECK (group_name ~ '^[A-ZА-Яa-zа-яё0-9 -\[\]\\\^\$\.\|\?\*\+\(\)]+$')
 );
 
-CREATE TABLE commodity_matrix
+CREATE TABLE sku
 (
     sku_id   BIGINT PRIMARY KEY,
     sku_name varchar
@@ -52,14 +52,14 @@ CREATE TABLE commodity_matrix
     group_id BIGINT NOT NULL REFERENCES groups_sku (group_id)
 );
 
-CREATE INDEX IF NOT EXISTS idx_group_id ON commodity_matrix USING btree(group_id);
+CREATE INDEX IF NOT EXISTS idx_group_id ON sku USING btree(group_id);
 
-COMMENT ON COLUMN commodity_matrix.group_id IS 'Идентификатор группы родственных товаров, к которой относится товар (например, одинаковые йогурты одного производителя и объема, но разных вкусов). Указывается один идентификатор для всех товаров в группе';
+COMMENT ON COLUMN sku.group_id IS 'Идентификатор группы родственных товаров, к которой относится товар (например, одинаковые йогурты одного производителя и объема, но разных вкусов). Указывается один идентификатор для всех товаров в группе';
 
 CREATE TABLE checks
 (
     transaction_id BIGINT NOT NULL REFERENCES transactions (transaction_id),
-    sku_id         BIGINT NOT NULL REFERENCES commodity_matrix (sku_id),
+    sku_id         BIGINT NOT NULL REFERENCES sku (sku_id),
     sku_amount     NUMERIC,
     sku_summ       NUMERIC,
     sku_summ_paid  NUMERIC,
@@ -74,7 +74,7 @@ COMMENT ON COLUMN checks.sku_discount IS 'Размер предоставлен�
 CREATE TABLE stores
 (
     transaction_store_id BIGINT,
-    sku_id               BIGINT REFERENCES commodity_matrix(sku_id),
+    sku_id               BIGINT REFERENCES sku(sku_id),
     sku_purchase_price   NUMERIC
         CHECK (sku_purchase_price >= 0),
     sku_retail_price     NUMERIC
