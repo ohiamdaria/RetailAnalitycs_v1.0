@@ -29,7 +29,7 @@ VALUES (1,'Чипсы'),
        (4,'Автомобили'),
        (5,'Зарядки');
 
-INSERT INTO commodity_matrix (sku_id, sku_name, group_id)
+INSERT INTO sku (sku_id, sku_name, group_id)
 VALUES (1,'Heipz GmbH Масло подсолнечное Shadow',1),
        (2,'Heipz GmbH Анальгин Leta',2),
        (3,'ОАО РосМосГосТорг Ручка шариковая Red Line',3),
