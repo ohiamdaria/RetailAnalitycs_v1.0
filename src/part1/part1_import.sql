@@ -3,7 +3,7 @@
 --
 
 -- Absolute path to the project
-SET path_to_datasets.const TO '/Users/warbirdo/Desktop/RetailAnalitycs_v1.0/datasets/';
+SET path_to_datasets.const TO '/home/vladimir/Desktop/RetailAnalitycs_v1.0/datasets/';
 
 DROP PROCEDURE IF EXISTS import(tablename varchar, separator char);
 DROP PROCEDURE IF EXISTS import_mini(tablename varchar, separator char);
@@ -23,14 +23,14 @@ CREATE OR REPLACE PROCEDURE import_mini(IN tablename varchar, IN separator char)
     END
 $$ LANGUAGE plpgsql;
 
-CALL import('personal_data',E'\t');
+CALL import('Personal_Data',E'\t');
 CALL import('Cards', E'\t');
 CALL import('Transactions', E'\t');
 CALL import('Groups_SKU', E'\t');
 CALL import('SKU', E'\t');
 CALL import('Checks', E'\t');
 CALL import('Stores', E'\t');
-CALL import('date_of_analysis_formation', E'\t');
+CALL import('Date_Of_Analysis_Formation', E'\t');
 
 
 -- CALL import_mini('personal_data',E'\t');
