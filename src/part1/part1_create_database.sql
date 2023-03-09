@@ -27,7 +27,7 @@ CREATE TABLE transactions
     transaction_id       BIGINT PRIMARY KEY,
     customer_card_id     BIGINT REFERENCES cards (customer_card_id),
     transaction_summ     NUMERIC,
-    transaction_datetime timestamp,
+    transaction_datetime timestamp WITHOUT TIME ZONE,
     transaction_store_id BIGINT
 );
 
