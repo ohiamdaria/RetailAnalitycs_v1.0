@@ -66,6 +66,10 @@ CREATE TABLE checks
     sku_discount   NUMERIC
 );
 
+CREATE INDEX IF NOT EXISTS idx_checks_transaction_id ON checks USING btree(transaction_id);
+CREATE INDEX IF NOT EXISTS idx_checks_sku_id ON checks USING btree(sku_id);
+CREATE INDEX IF NOT EXISTS idx_checks_sku_discount ON checks USING btree(sku_discount);
+
 COMMENT ON COLUMN checks.sku_amount IS 'Указание, какое количество товара было куплено';
 COMMENT ON COLUMN checks.sku_summ IS 'Сумма покупки фактического объема данного товара в рублях (полная стоимость без учета скидок и бонусов)';
 COMMENT ON COLUMN checks.sku_summ_paid IS 'Фактически оплаченная сумма покупки данного товара, не включая сумму предоставленной скидки';
@@ -80,6 +84,8 @@ CREATE TABLE stores
     sku_retail_price     NUMERIC
         CHECK (sku_retail_price >= 0)
 );
+
+CREATE INDEX IF NOT EXISTS idx_stores_transaction_store_id ON stores USING btree(transaction_store_id);
 
 COMMENT ON COLUMN stores.sku_purchase_price IS 'Закупочная стоимость товара для данного магазина';
 COMMENT ON COLUMN stores.sku_retail_price IS 'Стоимость продажи товара без учета скидок для данного магазина';
