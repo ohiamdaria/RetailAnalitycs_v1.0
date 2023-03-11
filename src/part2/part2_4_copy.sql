@@ -1,110 +1,3 @@
--- Group_ID add, Group_Affinity_Index add
-
---  WITH group_id AS
---   (SELECT DISTINCT personal_data.customer_id,
---                          sku.group_id
---                     FROM personal_data INNER JOIN cards ON personal_data.customer_id = cards.customer_id
---                     INNER JOIN transactions ON cards.customer_card_id = transactions.customer_card_id
---                     INNER JOIN checks ON transactions.transaction_id = checks.transaction_id
---                     INNER JOIN sku ON checks.sku_id = sku.sku_id
---     ORDER BY 1, 2)
-
-
--- CREATE MATERIALIZED VIEW groups AS (...)
--- CREATE OR REPLACE FUNCTION refresh_mat_view()
--- RETURNS TRIGGER LANGUAGE plpgsql
--- AS $$
--- BEGIN
---     REFRESH MATERIALIZED VIEW groups;
---     RETURN NULL;
--- end $$;
---
--- CREATE TRIGGER refresh_mat_view_personal_data
--- AFTER INSERT OR UPDATE OR DELETE OR TRUNCATE
--- ON personal_data FOR EACH STATEMENT
--- EXECUTE PROCEDURE refresh_mat_view();
---
--- CREATE TRIGGER refresh_mat_view_transactions
--- AFTER INSERT OR UPDATE OR DELETE OR TRUNCATE
--- ON transactions FOR EACH STATEMENT
--- EXECUTE PROCEDURE refresh_mat_view();
---
--- CREATE TRIGGER refresh_mat_view_checks
--- AFTER INSERT OR UPDATE OR DELETE OR TRUNCATE
--- ON checks FOR EACH STATEMENT
--- EXECUTE PROCEDURE refresh_mat_view();
---
--- CREATE TRIGGER refresh_mat_view_sku
--- AFTER INSERT OR UPDATE OR DELETE OR TRUNCATE
--- ON sku FOR EACH STATEMENT
--- EXECUTE PROCEDURE refresh_mat_view();
-
-WITH base  AS (SELECT DISTINCT personal_data.customer_id,
-                      sku.group_id,
-                      checks.transaction_id,
-                      p."Group_Frequency"
-                FROM personal_data INNER JOIN cards ON personal_data.customer_id = cards.customer_id
-                    INNER JOIN transactions ON cards.customer_card_id = transactions.customer_card_id
-                    INNER JOIN checks ON transactions.transaction_id = checks.transaction_id
-                    INNER JOIN sku ON checks.sku_id = sku.sku_id
-                    INNER JOIN periods p on cards.customer_id = p."Customer_ID"
-                WHERE transactions.transaction_datetime >= p."First_Group_Purchase_Date"
-                                          AND
-                                          transactions.transaction_datetime <= p."Last_Group_Purchase_Date"
-                GROUP BY personal_data.customer_id, sku.group_id, checks.transaction_id, p."Group_Frequency"
-                ORDER BY 1),
-    all_groups AS (SELECT customer_id,
-                          COUNT(transaction_id) AS count_all_transacations
-                   FROM base
-                   GROUP BY customer_id),
-    Group_Affinity_Index AS (SELECT base.customer_id,
-                        base.group_id,
-                        COUNT(transaction_id)::float / count_all_transacations::float AS count_transactions_of_group
-                 FROM base
-                 INNER JOIN all_groups ON base.customer_id = all_groups.customer_id
-                 GROUP BY base.customer_id, base.group_id, all_groups.count_all_transacations),
-    Max_Transaction_DateTime AS (
-        SELECT (SELECT EXTRACT(DAY FROM (date_of_analysis_formation.analysis_formation -  MAX(h."Transaction_DateTime"))))::float AS Max_Transaction_DateTime
-        FROM date_of_analysis_formation, history h
-        GROUP BY date_of_analysis_formation.analysis_formation
-    ),
-    Group_Churn_Rate AS (SELECT base.customer_id,
-                                base.group_id,
-                     (CASE WHEN base."Group_Frequency" = 0 THEN 0
-                     ELSE
-                         Max_Transaction_DateTime.Max_Transaction_DateTime/base."Group_Frequency"
-                     -- if paste "::date" then the number of days increases by one
-                     END) AS Group_Churn_Rate
-                     FROM Max_Transaction_DateTime, base
-                     ORDER BY 1, 2),
-    intervals AS (SELECT base.customer_id,
-                         base.group_id,
-                         base.transaction_id,
-                         h2."Transaction_DateTime",
-                         (LAG(h2."Transaction_DateTime") OVER
-                            (PARTITION BY customer_id, group_id
-                             ORDER BY customer_id, group_id, h2."Transaction_DateTime")) AS intervals
-                  FROM base
-                  INNER JOIN history h2 on base.transaction_id = h2."Transaction_ID")
-
-    SELECT * FROM intervals
-    ORDER BY 1, 2;
-
-
---                       MAX(h."Transaction_DateTime") AS Last_Transaction_DateTime
-
--- add Group_ID, Group_Affinity_Index, Group_Churn_Rate
-
-
-
-
-
-
-
-
-
-
-
 WITH group_id AS
   (SELECT DISTINCT personal_data.customer_id,
                          sku.group_id,
@@ -120,7 +13,7 @@ WITH group_id AS
                           AND
                           transactions.transaction_datetime <= p."Last_Group_Purchase_Date"
                     GROUP BY personal_data.customer_id, sku.group_id
-    ORDER BY 1, 2),
+     ORDER BY 1, 2),
     all_groups AS (SELECT DISTINCT personal_data.customer_id,
                          COUNT(transactions.transaction_id) AS count_all
                     FROM personal_data INNER JOIN cards ON personal_data.customer_id = cards.customer_id
@@ -161,8 +54,7 @@ WITH group_id AS
                          Transaction_DateTime - (LAG(Transaction_DateTime) OVER
                             (PARTITION BY customer_id, group_id
                              ORDER BY customer_id, group_id, Transaction_DateTime)) AS intervals
-                  FROM base
-                  ),
+                  FROM Group_Stability_Index),
     abs_deviation AS (SELECT customer_id,
                              group_id,
                              (SELECT EXTRACT(DAY FROM(intervals))) - periods."Group_Frequency" AS abs_deviation,
@@ -182,6 +74,6 @@ WITH group_id AS
                              AVG(relative_deviation)
                         FROM abs_deviation_plus
                         GROUP BY customer_id, group_id)
-    SELECT * FROM Stability_Index;
--- SELECT * FROM Group_Stability_Index
+
+SELECT * FROM intervals;
 
