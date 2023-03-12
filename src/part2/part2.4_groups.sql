@@ -1,14 +1,3 @@
--- Group_ID add, Group_Affinity_Index add
-
---  WITH group_id AS
---   (SELECT DISTINCT personal_data.customer_id,
---                          sku.group_id
---                     FROM personal_data INNER JOIN cards ON personal_data.customer_id = cards.customer_id
---                     INNER JOIN transactions ON cards.customer_card_id = transactions.customer_card_id
---                     INNER JOIN checks ON transactions.transaction_id = checks.transaction_id
---                     INNER JOIN sku ON checks.sku_id = sku.sku_id
---     ORDER BY 1, 2)
-
 
 -- CREATE MATERIALIZED VIEW groups AS (...)
 -- CREATE OR REPLACE FUNCTION refresh_mat_view()
@@ -188,8 +177,43 @@ WITH base1  AS (SELECT DISTINCT personal_data.customer_id,
                                       "Group_Summ_Paid"::float/"Group_Summ"::float
                                FROM history)
 
-SELECT * FROM Group_Average_Discount;
+CREATE MATERIALIZED VIEW groups AS (...)
+CREATE OR REPLACE FUNCTION refresh_mat_view()
+RETURNS TRIGGER LANGUAGE plpgsql
+AS $$
+BEGIN
+    REFRESH MATERIALIZED VIEW groups;
+    RETURN NULL;
+end $$;
 
-SELECT * FROM history
-ORDER BY 1, 4;
-SELECT * FROM periods;
+CREATE TRIGGER refresh_mat_view_personal_data
+AFTER INSERT OR UPDATE OR DELETE OR TRUNCATE
+ON personal_data FOR EACH STATEMENT
+EXECUTE PROCEDURE refresh_mat_view();
+
+CREATE TRIGGER refresh_mat_view_transactions
+AFTER INSERT OR UPDATE OR DELETE OR TRUNCATE
+ON transactions FOR EACH STATEMENT
+EXECUTE PROCEDURE refresh_mat_view();
+
+CREATE TRIGGER refresh_mat_view_checks
+AFTER INSERT OR UPDATE OR DELETE OR TRUNCATE
+ON checks FOR EACH STATEMENT
+EXECUTE PROCEDURE refresh_mat_view();
+
+CREATE TRIGGER refresh_mat_view_sku
+AFTER INSERT OR UPDATE OR DELETE OR TRUNCATE
+ON sku FOR EACH STATEMENT
+EXECUTE PROCEDURE refresh_mat_view();
+
+CREATE TRIGGER refresh_mat_view_personal_data
+AFTER INSERT OR UPDATE OR DELETE OR TRUNCATE
+ON history FOR EACH STATEMENT
+EXECUTE PROCEDURE refresh_mat_view();
+
+CREATE TRIGGER refresh_mat_view_transactions
+AFTER INSERT OR UPDATE OR DELETE OR TRUNCATE
+ON periods FOR EACH STATEMENT
+EXECUTE PROCEDURE refresh_mat_view();
+
+-- add another tables
