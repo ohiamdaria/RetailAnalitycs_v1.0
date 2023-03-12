@@ -39,20 +39,35 @@
 -- ON sku FOR EACH STATEMENT
 -- EXECUTE PROCEDURE refresh_mat_view();
 
-WITH base  AS (SELECT DISTINCT personal_data.customer_id,
+WITH base1  AS (SELECT DISTINCT personal_data.customer_id,
                       sku.group_id,
+                      p."Group_Frequency",
                       checks.transaction_id,
-                      p."Group_Frequency"
+                      h2."Transaction_DateTime"
                 FROM personal_data INNER JOIN cards ON personal_data.customer_id = cards.customer_id
                     INNER JOIN transactions ON cards.customer_card_id = transactions.customer_card_id
                     INNER JOIN checks ON transactions.transaction_id = checks.transaction_id
                     INNER JOIN sku ON checks.sku_id = sku.sku_id
                     INNER JOIN periods p on cards.customer_id = p."Customer_ID"
+                    INNER JOIN history h2 on checks.transaction_id = h2."Transaction_ID"
                 WHERE transactions.transaction_datetime >= p."First_Group_Purchase_Date"
                                           AND
                                           transactions.transaction_datetime <= p."Last_Group_Purchase_Date"
-                GROUP BY personal_data.customer_id, sku.group_id, checks.transaction_id, p."Group_Frequency"
-                ORDER BY 1),
+                ORDER BY 1, 2, 5),
+    base AS (SELECT DISTINCT personal_data.customer_id,
+                                                sku.group_id,
+                                                transactions.transaction_id AS transaction_id,
+                                                h2."Transaction_DateTime" AS Transaction_DateTime
+                                FROM personal_data INNER JOIN cards ON personal_data.customer_id = cards.customer_id
+                                INNER JOIN transactions ON cards.customer_card_id = transactions.customer_card_id
+                                INNER JOIN checks ON transactions.transaction_id = checks.transaction_id
+                                INNER JOIN sku ON checks.sku_id = sku.sku_id
+                                INNER JOIN periods p on cards.customer_id = p."Customer_ID"
+                                INNER JOIN history h2 on checks.transaction_id = h2."Transaction_ID"
+                                WHERE transactions.transaction_datetime >= p."First_Group_Purchase_Date"
+                                          AND
+                                          transactions.transaction_datetime <= p."Last_Group_Purchase_Date"
+                                ORDER BY 1, 2, 4),
     all_groups AS (SELECT customer_id,
                           COUNT(transaction_id) AS count_all_transacations
                    FROM base
@@ -64,32 +79,61 @@ WITH base  AS (SELECT DISTINCT personal_data.customer_id,
                  INNER JOIN all_groups ON base.customer_id = all_groups.customer_id
                  GROUP BY base.customer_id, base.group_id, all_groups.count_all_transacations),
     Max_Transaction_DateTime AS (
-        SELECT (SELECT EXTRACT(DAY FROM (date_of_analysis_formation.analysis_formation -  MAX(h."Transaction_DateTime"))))::float AS Max_Transaction_DateTime
+        SELECT h."Group_ID",
+               (SELECT
+            EXTRACT(DAY FROM (date_of_analysis_formation.analysis_formation -  MAX(h."Transaction_DateTime"))))::float AS Max_Transaction_DateTime
         FROM date_of_analysis_formation, history h
-        GROUP BY date_of_analysis_formation.analysis_formation
+
+        GROUP BY h."Group_ID", date_of_analysis_formation.analysis_formation
     ),
     Group_Churn_Rate AS (SELECT base.customer_id,
                                 base.group_id,
-                     (CASE WHEN base."Group_Frequency" = 0 THEN 0
+                                Max_Transaction_DateTime.Max_Transaction_DateTime,
+                                p."Group_Frequency",
+                     (CASE WHEN p."Group_Frequency" = 0 THEN 0
                      ELSE
-                         Max_Transaction_DateTime.Max_Transaction_DateTime/base."Group_Frequency"
+                         Max_Transaction_DateTime.Max_Transaction_DateTime/p."Group_Frequency"
                      -- if paste "::date" then the number of days increases by one
                      END) AS Group_Churn_Rate
                      FROM Max_Transaction_DateTime, base
+                     INNER JOIN periods p on base.customer_id = p."Customer_ID"
+                     WHERE base.group_id = p."Group_ID"
                      ORDER BY 1, 2),
-    intervals AS (SELECT base.customer_id,
+    intervals_date AS (SELECT base.customer_id,
                          base.group_id,
                          base.transaction_id,
-                         h2."Transaction_DateTime",
-                         (LAG(h2."Transaction_DateTime") OVER
+                         (Transaction_DateTime - (LAG(Transaction_DateTime) OVER
                             (PARTITION BY customer_id, group_id
-                             ORDER BY customer_id, group_id, h2."Transaction_DateTime")) AS intervals
-                  FROM base
-                  INNER JOIN history h2 on base.transaction_id = h2."Transaction_ID")
+                             ORDER BY customer_id, group_id, Transaction_DateTime))) AS intervals
+                  FROM base),
+    intervals AS (SELECT intervals_date.customer_id,
+                         intervals_date.group_id,
+                         periods."Group_Frequency" AS group_frequency,
+                         intervals_date.transaction_id,
+                         (SELECT EXTRACT(DAY FROM(intervals_date.intervals))) - periods."Group_Frequency" AS abs_deviation
+                  FROM intervals_date
+                  INNER JOIN periods ON periods."Customer_ID" = intervals_date.customer_id
+                      WHERE periods."Group_ID" = intervals_date.customer_id),
+    abs_deviation_plus AS (SELECT customer_id,
+                             group_id,
+                             CASE WHEN group_frequency = 0 THEN 0
+                             ELSE (CASE WHEN abs_deviation < 0 THEN abs_deviation * (-1)
+                             ELSE abs_deviation
+                             END)::float / group_frequency::float
+                             END AS relative_deviation
+                           FROM intervals),
+    Stability_Index AS (SELECT customer_id,
+                             group_id,
+                             AVG(relative_deviation)
+                        FROM abs_deviation_plus
+                        GROUP BY customer_id, group_id),
+    
 
-    SELECT * FROM intervals
+
+    SELECT * FROM Stability_Index
     ORDER BY 1, 2;
 
+-- SELECT * FROM intervals;
 
 --                       MAX(h."Transaction_DateTime") AS Last_Transaction_DateTime
 
