@@ -206,14 +206,16 @@ AFTER INSERT OR UPDATE OR DELETE OR TRUNCATE
 ON sku FOR EACH STATEMENT
 EXECUTE PROCEDURE refresh_mat_view();
 
-CREATE TRIGGER refresh_mat_view_personal_data
-AFTER INSERT OR UPDATE OR DELETE OR TRUNCATE
-ON history FOR EACH STATEMENT
-EXECUTE PROCEDURE refresh_mat_view();
 
-CREATE TRIGGER refresh_mat_view_transactions
-AFTER INSERT OR UPDATE OR DELETE OR TRUNCATE
-ON periods FOR EACH STATEMENT
-EXECUTE PROCEDURE refresh_mat_view();
+-- add triggers for MATERIALIZED VIEWs
+-- CREATE TRIGGER refresh_mat_view_personal_data
+-- AFTER INSERT OR UPDATE OR DELETE OR TRUNCATE
+-- ON history FOR EACH STATEMENT
+-- EXECUTE PROCEDURE refresh_mat_view();
+--
+-- CREATE TRIGGER refresh_mat_view_transactions
+-- AFTER INSERT OR UPDATE OR DELETE OR TRUNCATE
+-- ON periods FOR EACH STATEMENT
+-- EXECUTE PROCEDURE refresh_mat_view();
 
 -- add another tables
