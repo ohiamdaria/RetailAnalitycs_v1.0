@@ -18,7 +18,7 @@ WITH group_id AS
                          COUNT(transactions.transaction_id) AS count_all
                     FROM personal_data INNER JOIN cards ON personal_data.customer_id = cards.customer_id
                     INNER JOIN transactions ON cards.customer_card_id = transactions.customer_card_id
---                     INNER JOIN checks ON transactions.transaction_id = checks.transaction_id need?
+                    INNER JOIN checks ON transactions.transaction_id = checks.transaction_id
                     INNER JOIN periods p on cards.customer_id = p."Customer_ID"
                     WHERE transactions.transaction_datetime >= p."First_Group_Purchase_Date"
                           AND
