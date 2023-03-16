@@ -28,6 +28,22 @@
 -- ON sku FOR EACH STATEMENT
 -- EXECUTE PROCEDURE refresh_mat_view();
 
+
+SELECT DISTINCT personal_data.customer_id,
+                                sku.group_id,
+                                count(h2."Transaction_ID")
+                FROM personal_data INNER JOIN cards ON personal_data.customer_id = cards.customer_id
+                INNER JOIN transactions ON cards.customer_card_id = transactions.customer_card_id
+                INNER JOIN checks ON transactions.transaction_id = checks.transaction_id
+                INNER JOIN sku ON (checks.sku_id = sku.sku_id)
+                INNER JOIN periods p on (cards.customer_id = p."Customer_ID" AND p."Group_ID" = sku.group_id)
+                INNER JOIN history h2 on (checks.transaction_id = h2."Transaction_ID" AND h2."Group_ID" = sku.group_id AND h2."Customer_ID" = personal_data.customer_id)
+                WHERE transactions.transaction_datetime >= p."First_Group_Purchase_Date"
+                      AND
+                      transactions.transaction_datetime <= p."Last_Group_Purchase_Date"
+                GROUP BY personal_data.customer_id, sku.group_id
+                ORDER BY 1, 2;
+
 WITH    base AS (SELECT DISTINCT personal_data.customer_id,
                                 sku.group_id,
                                 transactions.transaction_id AS transaction_id,
@@ -35,9 +51,9 @@ WITH    base AS (SELECT DISTINCT personal_data.customer_id,
                 FROM personal_data INNER JOIN cards ON personal_data.customer_id = cards.customer_id
                 INNER JOIN transactions ON cards.customer_card_id = transactions.customer_card_id
                 INNER JOIN checks ON transactions.transaction_id = checks.transaction_id
-                INNER JOIN sku ON checks.sku_id = sku.sku_id
-                INNER JOIN periods p on cards.customer_id = p."Customer_ID"
-                INNER JOIN history h2 on checks.transaction_id = h2."Transaction_ID"
+                INNER JOIN sku ON (checks.sku_id = sku.sku_id)
+                INNER JOIN periods p on (cards.customer_id = p."Customer_ID" AND p."Group_ID" = sku.group_id)
+                INNER JOIN history h2 on (checks.transaction_id = h2."Transaction_ID" AND h2."Group_ID" = sku.group_id AND h2."Customer_ID" = personal_data.customer_id)
                 WHERE transactions.transaction_datetime >= p."First_Group_Purchase_Date"
                       AND
                       transactions.transaction_datetime <= p."Last_Group_Purchase_Date"
@@ -51,22 +67,24 @@ WITH    base AS (SELECT DISTINCT personal_data.customer_id,
                                     COUNT(transaction_id)::float / count_all_transacations::float AS Group_Affinity_Index
                              FROM base
                              INNER JOIN all_groups ON base.customer_id = all_groups.customer_id
-                             GROUP BY base.customer_id, base.group_id, all_groups.count_all_transacations),
-    max_transaction_datetime AS (SELECT h."Group_ID",
+                             GROUP BY base.customer_id, base.group_id, all_groups.count_all_transacations
+                             ORDER BY 1, 2),
+    max_transaction_datetime AS (SELECT h."Customer_ID",
+                                        h."Group_ID",
                                         (SELECT EXTRACT(DAY FROM (date_of_analysis_formation.analysis_formation -  MAX(h."Transaction_DateTime"))))::float AS max_transaction_datetime
                                 FROM date_of_analysis_formation, history h
-                                GROUP BY h."Group_ID", date_of_analysis_formation.analysis_formation),
-    Group_Churn_Rate AS (SELECT base.customer_id,
-                                base.group_id,
+                                GROUP BY h."Customer_ID", h."Group_ID", date_of_analysis_formation.analysis_formation),
+    Group_Churn_Rate AS (SELECT max_transaction_datetime."Customer_ID",
+                                max_transaction_datetime."Group_ID",
                                 max_transaction_datetime.max_transaction_datetime,
-                                 (CASE WHEN p."Group_Frequency" = 0 THEN 0
+                                P."Group_Frequency",
+                                 (CASE WHEN p."Group_Frequency" = 1 OR p."Group_Frequency" = 0 THEN 0 -- Group_Frequency cannot be 0
                                   ELSE
                                      max_transaction_datetime.max_transaction_datetime/p."Group_Frequency"
                                  -- if paste "::date" then the number of days increases by one
                                   END) AS Group_Churn_Rate
-                         FROM max_transaction_datetime, base
-                         INNER JOIN periods p on base.customer_id = p."Customer_ID"
-                         WHERE base.group_id = p."Group_ID"
+                         FROM max_transaction_datetime
+                         INNER JOIN periods p on (max_transaction_datetime."Customer_ID" = p."Customer_ID" AND max_transaction_datetime."Group_ID" = p."Group_ID")
                          ORDER BY 1, 2),
     intervals_date AS (SELECT base.customer_id,
                          base.group_id,
@@ -158,6 +176,7 @@ WITH    base AS (SELECT DISTINCT personal_data.customer_id,
                                       "Group_Summ_Paid"::float/"Group_Summ"::float AS Group_Average_Discount
                                FROM history)
 
+
 SELECT Group_Affinity_Index.customer_id,
        Group_Affinity_Index.group_id,
        Group_Affinity_Index.Group_Affinity_Index,
@@ -169,7 +188,7 @@ SELECT Group_Affinity_Index.customer_id,
        Group_Average_Discount.Group_Average_Discount
 
 FROM Group_Affinity_Index
-    INNER JOIN Group_Churn_Rate ON (Group_Churn_Rate.customer_id = Group_Affinity_Index.customer_id AND Group_Churn_Rate.group_id = Group_Affinity_Index.group_id)
+    INNER JOIN Group_Churn_Rate ON (Group_Churn_Rate."Customer_ID" = Group_Affinity_Index.customer_id AND Group_Churn_Rate."Group_ID" = Group_Affinity_Index.group_id)
     INNER JOIN Group_Stability_Index ON (Group_Stability_Index.customer_id = Group_Affinity_Index.customer_id AND Group_Stability_Index.group_id = Group_Affinity_Index.group_id)
     INNER JOIN Group_Margin_period ON (Group_Margin_period.customer_id = Group_Affinity_Index.customer_id AND Group_Margin_period.group_id = Group_Affinity_Index.group_id)
     INNER JOIN Group_Discount_Share ON (Group_Discount_Share.customer_id = Group_Affinity_Index.customer_id AND Group_Discount_Share.group_id = Group_Affinity_Index.group_id)
