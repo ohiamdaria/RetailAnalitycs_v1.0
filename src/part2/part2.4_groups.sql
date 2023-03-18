@@ -1,13 +1,5 @@
+-- CURRENT TIME TO CREATE GROUP VIEW : 1 MIN 36 S 255 MS
 
--- CREATE MATERIALIZED VIEW groups AS (...)
--- CREATE OR REPLACE FUNCTION refresh_mat_view()
--- RETURNS TRIGGER LANGUAGE plpgsql
--- AS $$
--- BEGIN
---     REFRESH MATERIALIZED VIEW groups;
---     RETURN NULL;
--- end $$;
---
 -- CREATE TRIGGER refresh_mat_view_personal_data
 -- AFTER INSERT OR UPDATE OR DELETE OR TRUNCATE
 -- ON personal_data FOR EACH STATEMENT
@@ -29,22 +21,24 @@
 -- EXECUTE PROCEDURE refresh_mat_view();
 
 
-SELECT DISTINCT personal_data.customer_id,
-                                sku.group_id,
-                                count(h2."Transaction_ID")
-                FROM personal_data INNER JOIN cards ON personal_data.customer_id = cards.customer_id
-                INNER JOIN transactions ON cards.customer_card_id = transactions.customer_card_id
-                INNER JOIN checks ON transactions.transaction_id = checks.transaction_id
-                INNER JOIN sku ON (checks.sku_id = sku.sku_id)
-                INNER JOIN periods p on (cards.customer_id = p."Customer_ID" AND p."Group_ID" = sku.group_id)
-                INNER JOIN history h2 on (checks.transaction_id = h2."Transaction_ID" AND h2."Group_ID" = sku.group_id AND h2."Customer_ID" = personal_data.customer_id)
-                WHERE transactions.transaction_datetime >= p."First_Group_Purchase_Date"
-                      AND
-                      transactions.transaction_datetime <= p."Last_Group_Purchase_Date"
-                GROUP BY personal_data.customer_id, sku.group_id
-                ORDER BY 1, 2;
+-- SELECT DISTINCT personal_data.customer_id,
+--                                 sku.group_id,
+--                                 count(h2."Transaction_ID")
+--                 FROM personal_data INNER JOIN cards ON personal_data.customer_id = cards.customer_id
+--                 INNER JOIN transactions ON cards.customer_card_id = transactions.customer_card_id
+--                 INNER JOIN checks ON transactions.transaction_id = checks.transaction_id
+--                 INNER JOIN sku ON (checks.sku_id = sku.sku_id)
+--                 INNER JOIN periods p on (cards.customer_id = p."Customer_ID" AND p."Group_ID" = sku.group_id)
+--                 INNER JOIN history h2 on (checks.transaction_id = h2."Transaction_ID" AND h2."Group_ID" = sku.group_id AND h2."Customer_ID" = personal_data.customer_id)
+--                 WHERE transactions.transaction_datetime >= p."First_Group_Purchase_Date"
+--                       AND
+--                       transactions.transaction_datetime <= p."Last_Group_Purchase_Date"
+--                 GROUP BY personal_data.customer_id, sku.group_id
+--                 ORDER BY 1, 2;
+--
+-- DROP MATERIALIZED VIEW base CASCADE;
 
-WITH    base AS (SELECT DISTINCT personal_data.customer_id,
+CREATE MATERIALIZED VIEW base AS (SELECT DISTINCT personal_data.customer_id,
                                 sku.group_id,
                                 transactions.transaction_id AS transaction_id,
                                 h2."Transaction_DateTime" AS Transaction_DateTime
@@ -57,7 +51,31 @@ WITH    base AS (SELECT DISTINCT personal_data.customer_id,
                 WHERE transactions.transaction_datetime >= p."First_Group_Purchase_Date"
                       AND
                       transactions.transaction_datetime <= p."Last_Group_Purchase_Date"
-                ORDER BY 1, 2, 4),
+                ORDER BY 1, 2, 4);
+-- CREATE OR REPLACE FUNCTION refresh_mat_view()
+-- RETURNS TRIGGER LANGUAGE plpgsql
+-- AS $$
+-- BEGIN
+--     REFRESH MATERIALIZED VIEW groups;
+--     RETURN NULL;
+-- end $$;
+
+-- WITH    base AS (SELECT DISTINCT personal_data.customer_id,
+--                                 sku.group_id,
+--                                 transactions.transaction_id AS transaction_id,
+--                                 h2."Transaction_DateTime" AS Transaction_DateTime
+--                 FROM personal_data INNER JOIN cards ON personal_data.customer_id = cards.customer_id
+--                 INNER JOIN transactions ON cards.customer_card_id = transactions.customer_card_id
+--                 INNER JOIN checks ON transactions.transaction_id = checks.transaction_id
+--                 INNER JOIN sku ON (checks.sku_id = sku.sku_id)
+--                 INNER JOIN periods p on (cards.customer_id = p."Customer_ID" AND p."Group_ID" = sku.group_id)
+--                 INNER JOIN history h2 on (checks.transaction_id = h2."Transaction_ID" AND h2."Group_ID" = sku.group_id AND h2."Customer_ID" = personal_data.customer_id)
+--                 WHERE transactions.transaction_datetime >= p."First_Group_Purchase_Date"
+--                       AND
+--                       transactions.transaction_datetime <= p."Last_Group_Purchase_Date"
+--                 ORDER BY 1, 2, 4),
+CREATE MATERIALIZED VIEW groups AS (
+    WITH
     all_groups AS (SELECT customer_id,
                           COUNT(transaction_id) AS count_all_transacations
                    FROM base
@@ -116,7 +134,6 @@ WITH    base AS (SELECT DISTINCT personal_data.customer_id,
                               GROUP BY customer_id, group_id),
     Group_Margin_period AS (SELECT base.customer_id,
                                    base.group_id,
-                                   base.transaction_id,
                                    history."Group_Summ_Paid" - history."Group_Cost" AS Group_Margin
                             FROM date_of_analysis_formation, base
                             INNER JOIN history ON base.customer_id = history."Customer_ID"
@@ -127,7 +144,7 @@ WITH    base AS (SELECT DISTINCT personal_data.customer_id,
                                   Transaction_DateTime <= date_of_analysis_formation.analysis_formation
                                   AND
                                   Transaction_DateTime >= date_of_analysis_formation.analysis_formation - interval '100 day'),
-    -- need to sum group margin if we have some products from one group?
+    -- need to sum group margin if we have some products from one group? NO
     count_transactions AS (SELECT DISTINCT base.customer_id,
 --                                    base.group_id,
                                    base.transaction_id,
@@ -148,8 +165,8 @@ WITH    base AS (SELECT DISTINCT personal_data.customer_id,
                                                FROM count_transactions t) x
                                         INNER JOIN base ON (x.customer_id = base.customer_id AND x.transaction_id = base.transaction_id)
                                         INNER JOIN history ON (x.customer_id = history."Customer_ID" AND base.group_id = history."Group_ID" AND x.transaction_id = history."Transaction_ID")
-                                        WHERE x.r <= 2
-                                        ORDER BY 1, 2), -- count of transactionsб
+                                        WHERE x.r <= 2 -- count of transactions
+                                        ORDER BY 1, 2),
     transactions_with_discount AS (SELECT base.customer_id,
                                           base.group_id,
                                           base.transaction_id,
@@ -176,6 +193,8 @@ WITH    base AS (SELECT DISTINCT personal_data.customer_id,
                                       "Group_Summ_Paid"::float/"Group_Summ"::float AS Group_Average_Discount
                                FROM history)
 
+-- чего делать если Group_Frequency == 0???? мб они не должны быть 0...think about it
+
 
 SELECT Group_Affinity_Index.customer_id,
        Group_Affinity_Index.group_id,
@@ -194,11 +213,7 @@ FROM Group_Affinity_Index
     INNER JOIN Group_Discount_Share ON (Group_Discount_Share.customer_id = Group_Affinity_Index.customer_id AND Group_Discount_Share.group_id = Group_Affinity_Index.group_id)
     INNER JOIN Group_Minimum_Discount ON (Group_Minimum_Discount."Customer_ID" = Group_Affinity_Index.customer_id AND Group_Minimum_Discount."Group_ID" = Group_Affinity_Index.group_id)
     INNER JOIN Group_Average_Discount ON (Group_Average_Discount."Customer_ID" = Group_Affinity_Index.customer_id AND Group_Average_Discount."Group_ID" = Group_Affinity_Index.group_id)
-        ;
--- чего делать если Group_Frequency == 0???? мб они не должны быть 0...think about it
-
-
-CREATE MATERIALIZED VIEW groups AS (...)
+        )
 CREATE OR REPLACE FUNCTION refresh_mat_view()
 RETURNS TRIGGER LANGUAGE plpgsql
 AS $$
