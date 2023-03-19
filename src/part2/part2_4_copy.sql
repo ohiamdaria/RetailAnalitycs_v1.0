@@ -8,6 +8,7 @@ WITH group_id AS
                     INNER JOIN checks ON transactions.transaction_id = checks.transaction_id
                     INNER JOIN sku ON checks.sku_id = sku.sku_id
                     INNER JOIN periods p on cards.customer_id = p."Customer_ID"
+
                     INNER JOIN history h on checks.transaction_id = h."Transaction_ID"
                     WHERE transactions.transaction_datetime >= p."First_Group_Purchase_Date"
                           AND
