@@ -1,4 +1,4 @@
-CREATE MATERIALIZED VIEW suppoort_view AS
+CREATE MATERIALIZED VIEW support_view AS
 SELECT public.cards.customer_id,
        public.transactions.transaction_id,
        public.checks.sku_id,
@@ -28,37 +28,37 @@ FROM transactions
 CREATE OR REPLACE FUNCTION update_support_view() RETURNS trigger AS
 $$
 BEGIN
-    REFRESH MATERIALIZED VIEW public.suppoort_view;
+    REFRESH MATERIALIZED VIEW public.support_view;
     RETURN NULL;
 END;
 $$
     LANGUAGE plpgsql;
 
-CREATE TRIGGER update_suppoort_view_trigger_transactions
+CREATE TRIGGER update_support_view_trigger_transactions
     AFTER INSERT OR UPDATE OR DELETE
     ON public.transactions
     FOR EACH ROW
 EXECUTE FUNCTION update_support_view();
 
-CREATE TRIGGER update_suppoort_view_trigger_sku
+CREATE TRIGGER update_support_view_trigger_sku
     AFTER INSERT OR UPDATE OR DELETE
     ON public.sku
     FOR EACH ROW
 EXECUTE FUNCTION update_support_view();
 
-CREATE TRIGGER update_suppoort_view_trigger_cards
+CREATE TRIGGER update_support_view_trigger_cards
     AFTER INSERT OR UPDATE OR DELETE
     ON public.cards
     FOR EACH ROW
 EXECUTE FUNCTION update_support_view();
 
-CREATE TRIGGER update_suppoort_view_trigger_checks
+CREATE TRIGGER update_support_view_trigger_checks
     AFTER INSERT OR UPDATE OR DELETE
     ON public.checks
     FOR EACH ROW
 EXECUTE FUNCTION update_support_view();
 
-CREATE TRIGGER update_suppoort_view_trigger_checks
+CREATE TRIGGER update_support_view_trigger_checks
     AFTER INSERT OR UPDATE OR DELETE
     ON public.stores
     FOR EACH ROW

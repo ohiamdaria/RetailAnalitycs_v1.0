@@ -6,7 +6,7 @@ SELECT customer_id                  AS "Customer_ID",
        ROUND(SUM(Group_Cost), 2)    AS "Group_Cost",
        ROUND(SUM(sku_summ), 2)      AS "Group_Summ",
        ROUND(SUM(sku_summ_paid), 2) AS "Group_Summ_Paid"
-FROM suppoort_view
+FROM support_view
 GROUP BY customer_id,
          transaction_id,
          transaction_datetime,

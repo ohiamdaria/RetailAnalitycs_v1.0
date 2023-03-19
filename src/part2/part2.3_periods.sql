@@ -8,5 +8,5 @@ SELECT customer_id                                                              
        ROUND(COALESCE(MIN(CASE
                               WHEN sku_discount = 0 THEN NULL
                               ELSE sku_discount / sku_summ END), 0), 2)                     AS "Group_Min_Discount"
-FROM suppoort_view
+FROM support_view
 GROUP BY customer_id, group_id;
