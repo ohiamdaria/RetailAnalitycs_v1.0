@@ -1,6 +1,7 @@
 CREATE MATERIALIZED VIEW support_view AS
 SELECT public.cards.customer_id,
        public.transactions.transaction_id,
+       public.transactions.transaction_summ,
        public.checks.sku_id,
        public.sku.group_id,
        public.checks.sku_amount,
