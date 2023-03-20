@@ -1,6 +1,10 @@
+
+DROP MATERIALIZED VIEW periods CASCADE ;
+
 CREATE MATERIALIZED VIEW periods AS
 WITH helpers AS
-         (SELECT public.transactions.transaction_datetime,
+         (SELECT public.transactions.transaction_id,
+                 public.transactions.transaction_datetime,
                  public.cards.customer_id,
                  public.sku.group_id,
                  public.checks.sku_summ,
@@ -11,19 +15,42 @@ WITH helpers AS
                    JOIN checks
                         ON checks.transaction_id = transactions.transaction_id
                    JOIN sku
-                        ON sku.sku_id = checks.sku_id)
+                        ON sku.sku_id = checks.sku_id),
+        dates AS (SELECT customer_id AS "Customer_ID",
+                           group_id  AS "Group_ID",
+                           MIN(transaction_datetime) AS "First_Group_Purchase_Date",
+                           MAX(transaction_datetime) AS "Last_Group_Purchase_Date"
+                  FROM helpers
+                  GROUP BY customer_id, group_id)
+
+
+-- SELECT customer_id                                                                          AS "Customer_ID",
+--        group_id                                                                             AS "Group_ID",
+--        MIN(transaction_datetime)                                                            AS "First_Group_Purchase_Date",
+--        MAX(transaction_datetime)                                                            AS "Last_Group_Purchase_Date",
+--        COUNT(*)                                                                             AS "Group_Purchase",
+--        ((MAX(transaction_datetime)::date - MIN(transaction_datetime)::date) + 1) / COUNT(*) AS "Group_Frequency",
+--        ROUND(COALESCE(MIN(CASE
+--                               WHEN sku_discount = 0 THEN NULL
+--                               ELSE sku_discount / sku_summ END), 0), 2)                     AS "Group_Min_Discount"
+-- FROM helpers
+-- GROUP BY customer_id, group_id;
+
+
 SELECT customer_id                                                                          AS "Customer_ID",
        group_id                                                                             AS "Group_ID",
        MIN(transaction_datetime)                                                            AS "First_Group_Purchase_Date",
        MAX(transaction_datetime)                                                            AS "Last_Group_Purchase_Date",
-       COUNT(*)                                                                             AS "Group_Purchase",
-       ((MAX(transaction_datetime)::date - MIN(transaction_datetime)::date) + 1) / COUNT(*) AS "Group_Frequency",
-       ROUND(COALESCE(MIN(CASE
-                              WHEN sku_discount = 0 THEN NULL
-                              ELSE sku_discount / sku_summ END), 0), 2)                     AS "Group_Min_Discount"
+--        COUNT(*)                                                                             AS "Group_Purchase",
+       (SELECT EXTRACT(DAY FROM ((MAX(transaction_datetime) - MIN(transaction_datetime)))))  AS CHECK,
+       ((MAX(transaction_datetime)::date - MIN(transaction_datetime)::date) + 1) / COUNT(*) AS "Group_Frequency"
+--        ROUND(COALESCE(MIN(CASE
+--                               WHEN sku_discount = 0 THEN NULL
+--                               ELSE sku_discount / sku_summ END), 0), 2)                     AS "Group_Min_Discount"
 FROM helpers
+INNER JOIN dates ON (helpers.customer_id = dates."Customer_ID" AND helpers.group_id = dates."Group_ID")
 GROUP BY customer_id, group_id;
-
+SELECT * FROM periods;
 CREATE OR REPLACE FUNCTION update_periods() RETURNS trigger AS
 $$
 BEGIN
