@@ -147,7 +147,7 @@ CREATE MATERIALIZED VIEW customers
              "Customer_Segment",
              "Customer_Primary_Store")
 AS
-WITH churn_rate_table AS (SELECT customer_id,
+WITH churn_rate_table AS (SELECT info.customer_id,
                                  ROUND(COALESCE(info.inactive_period /
                                                 NULLIF(info.frequency, 0), 0)) AS churn_rate
                           FROM get_base_customer_info() AS info),
