@@ -3,7 +3,7 @@
 --
 
 -- Absolute path to the project
-SET path_to_datasets.const TO '/home/vladimir/Desktop/RetailAnalitycs_v1.0/datasets/';
+SET path_to_datasets.const TO '/Users/warbirdo/Desktop/RetailAnalitycs_v1.0/datasets/';
 
 DROP PROCEDURE IF EXISTS import(tablename varchar, separator char);
 DROP PROCEDURE IF EXISTS import_mini(tablename varchar, separator char);

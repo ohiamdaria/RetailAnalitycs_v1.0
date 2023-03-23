@@ -11,7 +11,7 @@ SELECT public.cards.customer_id,
        public.checks.sku_summ_paid,
        public.checks.sku_discount,
        public.stores.sku_purchase_price,
-       public.stores.sku_purchase_price * public.checks.sku_amount AS Group_Cost,
+--        public.stores.sku_purchase_price * public.checks.sku_amount AS Group_Cost,
        public.stores.sku_retail_price,
        public.transactions.transaction_datetime,
        public.date_of_analysis_formation.analysis_formation
